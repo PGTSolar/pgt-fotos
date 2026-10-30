@@ -402,7 +402,7 @@
       try {
         const r = await api("/admin/check-existing", { id: c.dataset.id });
         if (r.compatible) {
-          box.innerHTML = `<p class="ok" style="font-size:13.5px">Pasta no modelo V1</p>
+          box.innerHTML = `<p class="ok" style="font-size:13.5px">${r.note ? esc(r.note) : "Pasta no modelo V1"}</p>
             <button class="btn mk" data-id="${esc(c.dataset.id)}">Usar pasta existente e liberar</button>`;
           box.querySelector("button").onclick = e => create(e.target, "adopt");
         } else box.innerHTML = `<p class="muted">Padrão antigo: fica fora do app. ${esc(r.reason || "")}</p>`;

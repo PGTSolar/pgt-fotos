@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E4D2E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PGS Fotos">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>PGS Fotos (teste)</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,Arial,sans-serif;background:#f4f8f5;color:#1b2b22}
+header{background:#0E4D2E;color:#fff;padding:18px 16px}
+header h1{margin:0;font-size:20px}header p{margin:4px 0 0;font-size:13px;opacity:.85}
+main{padding:16px;max-width:560px;margin:0 auto}
+.card{background:#fff;border:1px solid #d6e6dc;border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 8px;font-size:16px}
+label.btn{display:block;text-align:center;background:#2FA36B;color:#fff;font-weight:700;padding:16px;border-radius:12px;font-size:17px}
+input[type=file]{display:none}
+ul{list-style:none;padding:0;margin:10px 0 0;font-size:13px}
+li{padding:6px 0;border-top:1px solid #eef3ef;word-break:break-all}
+.ok{color:#166534;font-weight:700}
+small{color:#5b6b62}
+</style>
+</head>
+<body>
+<header><h1>PGS Fotos</h1><p>Versão de teste, nada é enviado ainda</p></header>
+<main>
+<div class="card">
+<h2>1. O app abriu?</h2>
+<p class="ok" id="status">Sim, a página carregou.</p>
+<small id="mode"></small>
+</div>
+<div class="card">
+<h2>2. Escolher fotos da galeria</h2>
+<label class="btn" for="pick">Escolher fotos</label>
+<input id="pick" type="file" accept="image/*" multiple>
+<p><b id="count">0</b> fotos escolhidas</p>
+<ul id="list"></ul>
+</div>
+<div class="card">
+<h2>3. Tirar foto com a câmera</h2>
+<label class="btn" for="cam" style="background:#0E4D2E">Abrir câmera</label>
+<input id="cam" type="file" accept="image/*" capture="environment">
+<ul id="list2"></ul>
+</div>
+</main>
+<script>
+document.getElementById('mode').textContent =
+  (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone)
+  ? 'Aberto como app instalado.' : 'Aberto no navegador (ainda não instalado).';
+function show(input, listId, countId){
+  const ul=document.getElementById(listId); ul.innerHTML='';
+  [...input.files].forEach(f=>{
+    const li=document.createElement('li');
+    li.textContent=f.name+' | '+(f.type||'tipo desconhecido')+' | '+(f.size/1048576).toFixed(2)+' MB';
+    ul.appendChild(li);
+  });
+  if(countId) document.getElementById(countId).textContent=input.files.length;
+}
+document.getElementById('pick').addEventListener('change',e=>show(e.target,'list','count'));
+document.getElementById('cam').addEventListener('change',e=>show(e.target,'list2'));
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+</body>
+</html>

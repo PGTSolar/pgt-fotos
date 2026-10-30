@@ -373,18 +373,24 @@
     let list; try { list = (await api("/admin/pending")).projects; } catch (e) { return my === seq && fail(e, viewNew); }
     if (my !== seq) return;
     list.sort((a, b) => b.id.localeCompare(a.id));
+    const old = list.filter(r => r.existing), open = list.filter(r => !r.existing);
+    const card = r => {
+      const code = svcCode(r.id), probs = [...r.problems];
+      if (!["SB", "SO"].includes(code)) probs.push("Checklist pronto só para SB e SO");
+      if (r.conflict) probs.push(`Já existe pasta deste cliente com outro ID: "${r.conflict}". Confira o ID na planilha.`);
+      return `<div class="card"><b>${esc(r.client || "(sem nome)")}</b>
+        <div class="muted">${esc(r.id)} · ${esc(r.service)} · ${esc(r.partner || "sem partner")}</div>
+        ${r.address ? `<div class="muted">${esc(r.address)}</div>` : ""}
+        ${probs.map(x => `<div class="err" style="font-size:13.5px">${esc(x)}</div>`).join("")}
+        <div style="height:10px"></div>
+        <button class="btn mk" data-id="${esc(r.id)}" ${probs.length ? "disabled" : ""}>Criar pasta e liberar</button>
+        <div class="out"></div></div>`;
+    };
     view.innerHTML = `<p class="muted">Projetos da aba Projects que ainda não estão no app. Criar o projeto monta a pasta no Drive a partir do modelo V1 e libera o projeto para os técnicos.</p>
-      ${list.length ? list.map(r => {
-        const code = svcCode(r.id), probs = [...r.problems];
-        if (!["SB", "SO"].includes(code)) probs.push("Checklist pronto só para SB e SO");
-        return `<div class="card"><b>${esc(r.client || "(sem nome)")}</b>
-          <div class="muted">${esc(r.id)} · ${esc(r.service)} · ${esc(r.partner || "sem partner")}</div>
-          ${r.address ? `<div class="muted">${esc(r.address)}</div>` : ""}
-          ${probs.map(x => `<div class="err" style="font-size:13.5px">${esc(x)}</div>`).join("")}
-          <div style="height:10px"></div>
-          <button class="btn mk" data-id="${esc(r.id)}" ${probs.length ? "disabled" : ""}>Criar pasta e liberar</button>
-          <div class="out"></div></div>`;
-      }).join("") : '<p class="muted center">Todos os projetos da planilha já estão no app.</p>'}`;
+      ${open.length ? open.map(card).join("") : '<p class="muted center">Nenhum projeto novo para criar.</p>'}
+      ${old.length ? `<h2>Já têm pasta no Drive (fluxo antigo)</h2>
+        <p class="muted">Estes projetos já foram criados à mão. Eles terminam no fluxo atual e não entram no app.</p>
+        ${old.map(r => `<div class="card"><b>${esc(r.client)}</b><div class="muted">${esc(r.existing)}</div></div>`).join("")}` : ""}`;
     view.querySelectorAll("button.mk").forEach(b => b.onclick = () => create(b));
   }
   async function create(b) {

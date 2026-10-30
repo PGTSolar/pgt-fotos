@@ -388,34 +388,59 @@
     };
     view.innerHTML = `<p class="muted">Projetos da aba Projects que ainda não estão no app. Criar o projeto monta a pasta no Drive a partir do modelo V1 e libera o projeto para os técnicos.</p>
       ${open.length ? open.map(card).join("") : '<p class="muted center">Nenhum projeto novo para criar.</p>'}
-      ${old.length ? `<h2>Já têm pasta no Drive (fluxo antigo)</h2>
-        <p class="muted">Estes projetos já foram criados à mão. Eles terminam no fluxo atual e não entram no app.</p>
-        ${old.map(r => `<div class="card"><b>${esc(r.client)}</b><div class="muted">${esc(r.existing)}</div></div>`).join("")}` : ""}`;
-    view.querySelectorAll("button.mk").forEach(b => b.onclick = () => create(b));
+      ${old.length ? `<h2>Já têm pasta no Drive</h2>
+        <p class="muted">Pastas criadas à mão. Se a pasta foi copiada do modelo V1, dá para usar no app. Se está no padrão antigo, o projeto termina no fluxo atual.</p>
+        ${old.map(r => `<div class="card old" data-id="${esc(r.id)}" data-recv="${esc(r.received)}"><b>${esc(r.client)}</b>
+          <div class="muted">${esc(r.existing)}</div><div class="chk"></div><div class="out"></div></div>`).join("")}` : ""}`;
+    view.querySelectorAll("button.mk").forEach(b => b.onclick = () => create(b, "create"));
+    // confere as pastas existentes recentes (últimos 120 dias); as mais antigas só sob demanda
+    const recent = d => { const m = String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (!m) return true; return Date.now() - new Date(+m[3], +m[1] - 1, +m[2]) < 120 * 864e5; };
+    const cards = [...view.querySelectorAll(".card.old")];
+    const check = async c => {
+      const box = c.querySelector(".chk");
+      box.innerHTML = '<p class="muted"><span class="spin"></span> Conferindo a pasta...</p>';
+      try {
+        const r = await api("/admin/check-existing", { id: c.dataset.id });
+        if (r.compatible) {
+          box.innerHTML = `<p class="ok" style="font-size:13.5px">Pasta no modelo V1</p>
+            <button class="btn mk" data-id="${esc(c.dataset.id)}">Usar pasta existente e liberar</button>`;
+          box.querySelector("button").onclick = e => create(e.target, "adopt");
+        } else box.innerHTML = `<p class="muted">Padrão antigo: fica fora do app. ${esc(r.reason || "")}</p>`;
+      } catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+    };
+    const queue = cards.filter(c => recent(c.dataset.recv));
+    cards.filter(c => !recent(c.dataset.recv)).forEach(c => {
+      c.querySelector(".chk").innerHTML = '<button class="btn ghost">Conferir pasta</button>';
+      c.querySelector(".chk button").onclick = () => check(c);
+    });
+    (async () => { for (const c of queue) { if (my !== seq) return; await check(c); } })();
   }
-  async function create(b) {
-    const out = b.nextElementSibling;
-    if (!b.dataset.c) { b.dataset.c = "1"; b.textContent = "Toque de novo para confirmar"; b.className = "btn warn mk"; return; }
-    document.querySelectorAll("button.mk").forEach(x => (x.disabled = true));
+  async function create(b, mode) {
+    const out = b.closest(".card").querySelector(".out");
+    if (!b.dataset.c) { b.dataset.c = "1"; b.textContent = "Toque de novo para confirmar"; b.classList.add("warn"); return; }
+    const btns = [...document.querySelectorAll("button.mk")];
+    const was = btns.map(x => x.disabled);
+    btns.forEach(x => (x.disabled = true));
     const say = h => (out.innerHTML = `<p class="muted">${h}</p>`);
     try {
-      say('<span class="spin"></span> Criando a pasta do projeto...');
-      let r = await api("/admin/create-start", { id: b.dataset.id });
+      say(`<span class="spin"></span> ${mode === "adopt" ? "Lendo a pasta existente..." : "Criando a pasta do projeto..."}`);
+      const r = await api(mode === "adopt" ? "/admin/adopt-start" : "/admin/create-start", { id: b.dataset.id });
       const path = r.path;
       let st = r.state;
       for (let guard = 0; guard < 40; guard++) {
-        say(`<span class="spin"></span> ${esc(path)}<br>${st.done} pastas criadas...`);
+        say(`<span class="spin"></span> ${esc(path)}<br>${mode === "adopt" ? "conferindo subpastas" : st.done + " pastas criadas"}...`);
         const s = await api("/admin/create-step", { state: st });
         st = s.state; if (s.finished) break;
       }
       const f = await api("/admin/create-finish", { state: st });
-      out.innerHTML = `<p class="ok">Pronto: ${f.folders} pastas criadas.</p><p class="muted">${esc(path)}</p>
+      out.innerHTML = `<p class="ok">${f.adopted ? `Pronto: pasta existente liberada no app${f.folders ? ` (${f.folders} subpastas que faltavam foram criadas)` : ""}.` : `Pronto: ${f.folders} pastas criadas.`}</p>
+        <p class="muted">${esc(path)}</p>
         <a class="btn ghost" href="${esc(f.url)}" target="_blank" rel="noopener">Abrir no Drive</a>`;
       b.remove(); S.list = null;
     } catch (e) {
-      out.innerHTML = `<p class="err">${esc(e.message)}</p><p class="muted">Se a pasta foi criada pela metade, apague-a no Drive antes de tentar de novo.</p>`;
+      out.innerHTML = `<p class="err">${esc(e.message)}</p>${mode === "adopt" ? "" : '<p class="muted">Se a pasta foi criada pela metade, apague-a no Drive antes de tentar de novo.</p>'}`;
     } finally {
-      document.querySelectorAll("button.mk").forEach(x => (x.disabled = false));
+      btns.forEach((x, i) => (x.disabled = was[i]));
     }
   }
 

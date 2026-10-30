@@ -1,6 +1,6 @@
 // Cache simples: sempre tenta a versão mais nova da internet; sem internet, usa a última salva.
-const CACHE = "pgs-fotos-v4";
-const FILES = ["./", "index.html", "style.css?v=4", "config.js?v=4", "checklist.js?v=4", "app.js?v=4", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+const CACHE = "pgs-fotos-v5";
+const FILES = ["./", "index.html", "style.css?v=5", "config.js?v=5", "checklist.js?v=5", "app.js?v=5", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch", e => {
